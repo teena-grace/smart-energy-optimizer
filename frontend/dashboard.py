@@ -16,6 +16,22 @@ st.set_page_config(
 
 API = os.getenv("API_BASE_URL", "http://localhost:5001").rstrip("/")
 
+
+def api_json(method, path, payload=None, timeout=30, retries=2):
+    """Call backend API with retry to handle Render cold starts."""
+    url = f"{API}{path}"
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.request(method, url, json=payload, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as err:
+            last_err = err
+            if attempt < retries:
+                time.sleep(2 + attempt)
+    raise RuntimeError(f"API call failed: {url} | {last_err}")
+
 # ─── PREMIUM CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -333,6 +349,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 with st.sidebar:
     st.markdown("## ⚡ Control Panel")
     st.markdown("---")
+    st.caption(f"API: {API}")
 
     st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
     st.markdown("**🌡️ Environment**")
@@ -373,14 +390,14 @@ if run_opt:
     with st.spinner("🤖 AI engine running optimization..."):
         time.sleep(0.6)
         try:
-            res = requests.post(f"{API}/predict", json={
+            res = api_json("POST", "/predict", payload={
                 "temperature": temperature,
                 "occupancy":   occupancy,
                 "hour":        hour,
                 "day_of_week": day_map[day]
-            }, timeout=5).json()
-        except Exception:
-            st.error("⚠️ API not reachable. Start Flask: `cd backend && python app.py`")
+            })
+        except Exception as e:
+            st.error(f"API not reachable at `{API}`. Check `API_BASE_URL` on Render.\n\n{e}")
             st.stop()
 
     is_high = res["predicted_energy_kwh"] > res["threshold_kwh"]
@@ -455,9 +472,9 @@ if load_fc:
     with st.spinner("Fetching forecast data..."):
         time.sleep(0.4)
         try:
-            forecast = requests.get(f"{API}/forecast", timeout=5).json()
-        except Exception:
-            st.error("API not reachable.")
+            forecast = api_json("GET", "/forecast")
+        except Exception as e:
+            st.error(f"API not reachable at `{API}`.\n\n{e}")
             st.stop()
 
     df_f = pd.DataFrame(forecast)
@@ -542,9 +559,9 @@ if load_hist:
     with st.spinner("Loading historical data..."):
         time.sleep(0.4)
         try:
-            hist = requests.get(f"{API}/history", timeout=5).json()
-        except Exception:
-            st.error("API not reachable.")
+            hist = api_json("GET", "/history")
+        except Exception as e:
+            st.error(f"API not reachable at `{API}`.\n\n{e}")
             st.stop()
 
     df_h = pd.DataFrame(hist)
