@@ -5,6 +5,7 @@ import plotly.express as px
 import pandas as pd
 from datetime import datetime
 import time
+import os
 
 st.set_page_config(
     page_title="⚡ EnergyAI — Smart Optimizer",
@@ -13,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-API = "http://localhost:5001"
+API = os.getenv("API_BASE_URL", "http://localhost:5001").rstrip("/")
 
 # ─── PREMIUM CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
