@@ -1,5 +1,8 @@
 # ⚡ Smart Energy Optimizer
 
+https://smart-energy-dashboard-samh.onrender.com
+https://smart-energy-optimizer-us1y.onrender.com
+
 > AI-powered energy management platform for smart buildings — real-time load prediction, automated optimization, and renewable energy advisory.
 
 ---
