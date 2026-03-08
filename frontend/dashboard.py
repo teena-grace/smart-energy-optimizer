@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-API = "http://localhost:5000"
+API = "http://localhost:5001"
 
 # ─── PREMIUM CSS ─────────────────────────────────────────────────────────────
 st.markdown("""

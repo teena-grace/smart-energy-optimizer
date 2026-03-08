@@ -1,47 +1,64 @@
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.preprocessing import StandardScaler
-import joblib
 import os
+from pathlib import Path
+
+import joblib
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "energy_data.csv"
+MODELS_DIR = BASE_DIR / "models"
+MODEL_PATH = MODELS_DIR / "energy_model.pkl"
+SCALER_PATH = MODELS_DIR / "scaler.pkl"
+
 
 def train_model():
-    df = pd.read_csv("data/energy_data.csv")
+    df = pd.read_csv(DATA_PATH)
 
     features = ["temperature", "occupancy", "hour", "day_of_week"]
-    target   = "energy_consumption"
+    target = "energy_consumption"
 
     X = df[features]
     y = df[target]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
+    X_test_scaled = scaler.transform(X_test)
 
     model = RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train_scaled, y_train)
 
     preds = model.predict(X_test_scaled)
-    print(f"MAE : {mean_absolute_error(y_test, preds):.2f}")
-    print(f"R²  : {r2_score(y_test, preds):.4f}")
+    print(f"MAE: {mean_absolute_error(y_test, preds):.2f}")
+    print(f"R2: {r2_score(y_test, preds):.4f}")
 
-    os.makedirs("models", exist_ok=True)
-    joblib.dump(model,  "models/energy_model.pkl")
-    joblib.dump(scaler, "models/scaler.pkl")
-    print("✅ Model saved to models/")
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    joblib.dump(model, MODEL_PATH)
+    joblib.dump(scaler, SCALER_PATH)
+    print("Model saved to models/")
+
 
 def predict(temperature, occupancy, hour, day_of_week):
-    model  = joblib.load("models/energy_model.pkl")
-    scaler = joblib.load("models/scaler.pkl")
+    if not MODEL_PATH.exists() or not SCALER_PATH.exists():
+        train_model()
 
-    X = pd.DataFrame([[temperature, occupancy, hour, day_of_week]],
-                     columns=["temperature", "occupancy", "hour", "day_of_week"])
+    model = joblib.load(MODEL_PATH)
+    scaler = joblib.load(SCALER_PATH)
+
+    X = pd.DataFrame(
+        [[temperature, occupancy, hour, day_of_week]],
+        columns=["temperature", "occupancy", "hour", "day_of_week"],
+    )
     X_scaled = scaler.transform(X)
     return float(model.predict(X_scaled)[0])
+
 
 if __name__ == "__main__":
     train_model()
