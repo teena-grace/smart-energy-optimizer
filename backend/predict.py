@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -15,8 +16,41 @@ MODEL_PATH = MODELS_DIR / "energy_model.pkl"
 SCALER_PATH = MODELS_DIR / "scaler.pkl"
 
 
+def _fallback_training_data(rows=24 * 30, seed=42):
+    """Generate synthetic data when CSV is unavailable in deployment."""
+    rng = np.random.default_rng(seed)
+    temperature = rng.uniform(18, 42, rows)
+    occupancy = rng.integers(5, 100, rows)
+    hour = rng.integers(0, 24, rows)
+    day_of_week = rng.integers(0, 7, rows)
+
+    energy = (
+        18
+        + 0.7 * temperature
+        + 0.35 * occupancy
+        + np.where((hour >= 9) & (hour <= 18), 6.5, 1.5)
+        + np.where(day_of_week >= 5, -2.0, 2.0)
+        + rng.normal(0, 2.2, rows)
+    )
+    energy = np.clip(energy, 8, None)
+
+    return pd.DataFrame(
+        {
+            "temperature": temperature,
+            "occupancy": occupancy,
+            "hour": hour,
+            "day_of_week": day_of_week,
+            "energy_consumption": energy,
+        }
+    )
+
+
 def train_model():
-    df = pd.read_csv(DATA_PATH)
+    if DATA_PATH.exists():
+        df = pd.read_csv(DATA_PATH)
+    else:
+        print(f"Warning: {DATA_PATH} not found. Using synthetic fallback data.")
+        df = _fallback_training_data()
 
     features = ["temperature", "occupancy", "hour", "day_of_week"]
     target = "energy_consumption"

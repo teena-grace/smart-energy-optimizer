@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -19,6 +20,11 @@ CORS(app)
 @app.route("/")
 def home():
     return jsonify({"message": "Smart Energy Optimizer API"})
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
 
 
 @app.route("/predict", methods=["POST"])
@@ -51,7 +57,18 @@ def forecast():
 
 @app.route("/history", methods=["GET"])
 def history():
-    df = pd.read_csv(DATA_PATH)
+    if DATA_PATH.exists():
+        df = pd.read_csv(DATA_PATH)
+    else:
+        now = datetime.utcnow()
+        hours = pd.date_range(end=now, periods=48, freq="h")
+        vals = np.random.uniform(18, 65, size=48)
+        df = pd.DataFrame(
+            {
+                "timestamp": hours.strftime("%Y-%m-%d %H:%M:%S"),
+                "energy_consumption": vals.round(2),
+            }
+        )
     sample = df.tail(48)[["timestamp", "energy_consumption"]].to_dict(orient="records")
     return jsonify(sample)
 
